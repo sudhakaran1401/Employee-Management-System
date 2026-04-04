@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+
+<div class="col-md-6 col-lg-5">
+  <div class="card shadow-lg border-0 rounded-4">
+
+    <div class="card-body p-4 text-center">
+
+      {% if user.is_authenticated %}
+
+        <!-- ✅ HOME PAGE AFTER LOGIN -->
+        <h3 class="mb-5">Welcome, {{ user.username }} </h3>
+
+        <a href="{% url 'post_login_redirect' %}" class="btn btn-success w-100 mb-5"> Go to Dashboard </a>
+
+        <a href="{% url 'logout' %}" class="btn btn-outline-danger w-100 mb-5"> Logout </a>
+
+      {% else %}
+
+        <!-- LOGIN BUTTON (optional) -->
+        <h5 class="mb-3">Welcome to EMS</h5>
+
+        <a href="{% url 'login' %}" class="btn btn-primary w-100">
+          Login
+        </a>
+
+      {% endif %}
+
+    </div>
+
+  </div>
+</div>
+
+  </div>
+</div>
+
+{% endblock %}

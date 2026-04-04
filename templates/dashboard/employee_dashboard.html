@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+  <h4 class="mb-0 fw-bold">Employee Dashboard</h4>
+
+  <form method="get" class="d-flex align-items-center gap-2">
+
+  <select name="year" class="form-select form-select-sm">
+    <option value="">Year</option>
+    {% for y in years %}
+      <option value="{{ y }}" {% if request.GET.year == y|stringformat:"s" %}selected{% endif %}>
+        {{ y }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <select name="month" class="form-select form-select-sm">
+    <option value="">Month</option>
+    {% for num,name in months %}
+      <option value="{{ num }}" {% if request.GET.month == num|stringformat:"s" %}selected{% endif %}>
+        {{ name }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <select name="date" class="form-select form-select-sm">
+  <option value="">Day</option>
+  {% for d in day_range %}
+  <option value="{{ d }}" {% if request.GET.date == d|stringformat:"s" %}selected{% endif %}>
+  {{ d }}
+  </option>
+  {% endfor %}
+  </select>
+
+  <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+  <a class="btn btn-sm btn-secondary" href="{% url 'employee_dashboard' %}">Reset</a>
+
+</form>
+
+</div>
+
+{% if profile %}
+  <div class="row g-3 mb-3">
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Worked Days</div>
+          <h4 class="mb-0">{{ my_attendance_month }}</h4>
+          <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'attendance_calendar' %}">View</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Leave balance</div>
+          <h4 class="mb-0">{{ leave_balance }}</h4>
+          <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'leave_balance' %}">View</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Latest Salary (Net Pay)</div>
+          <h4 class="mb-0">
+            {% if latest_salary %}{{ latest_salary.net_pay }}{% else %} 0 {% endif %}
+          </h4>
+          <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'employee_salary_history' %}">Salary History</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted">Payrolls recieved</div>
+          <h4 class="mb-0">
+            {{ salary_count }}
+          </h4>
+          <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'employee_salary_history' %}">View</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="row">
+
+  <!-- LEFT: Profile Card -->
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">My Profile</h5>
+
+        <p class="mb-1"><b>Name:</b> {{ profile.employee.name }}</p>
+        <p class="mb-1"><b>Email:</b> {{ profile.employee.email }}</p>
+        <p class="mb-1"><b>Department:</b> {{ profile.employee.department }}</p>
+        <p class="mb-1"><b>Designation:</b> {{ profile.employee.designation }}</p>
+
+        <div class="mt-3">
+          <a class="btn btn-outline-secondary btn-sm"
+             href="{% url 'my_profile' %}">
+            View Profile
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {{ attendance_month_labels|json_script:"attendance-month-labels" }}
+  {{ attendance_month_data|json_script:"attendance-month-data" }}
+ 
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">Worked Days</h5>
+        <div style="height:300px;">
+          <canvas id="attendanceChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{ payroll_month_labels|json_script:"payroll-month-labels" }}
+  {{ payroll_month_data|json_script:"payroll-month-data" }}
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">Payroll</h5>
+        <div style="height:300px;">
+          <canvas id="payrollChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+ </div>
+ </div>
+
+{% else %}
+  <div class="alert alert-warning">
+    No EmployeeProfile linked. Contact HR.
+  </div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+ const monthLabels = JSON.parse(
+  document.getElementById("attendance-month-labels").textContent
+);
+
+const monthData = JSON.parse(
+  document.getElementById("attendance-month-data").textContent
+);
+
+new Chart(
+  document.getElementById("attendanceChart"),
+  {
+    type: "line",
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        label: "Days Worked",
+        data: monthData,
+        borderColor: "#198754",
+        backgroundColor: "rgba(25,135,84,0.2)",
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          min: 0,        // 👈 force start
+          max: 30,       // 👈 force end at 30
+          ticks: {
+            stepSize: 5  // 0,5,10,15,20,25,30
+          },
+          title: {
+            display: true,
+            text: "Days Worked"
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: "Month"
+          }
+        }
+      }
+    }
+  }
+);
+
+const payrollLabels = JSON.parse(
+  document.getElementById("payroll-month-labels").textContent
+);
+
+const payrollData = JSON.parse(
+  document.getElementById("payroll-month-data").textContent
+);
+
+new Chart(
+  document.getElementById("payrollChart"),
+  {
+    type: "bar",   // bar looks good for salary
+    data: {
+      labels: payrollLabels,
+      datasets: [{
+        label: "Salary Received",
+        data: payrollData,
+        backgroundColor: "#0d6efd"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Salary Amount"
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: "Month"
+          }
+        }
+      }
+    }
+  }
+);
+</script>
+
+{% endblock %}

@@ -1,0 +1,32 @@
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    function initTableWhenReady(tableId, rowsPerPage = 5) {
+        function tryInit() {
+            const table = document.getElementById(tableId);
+
+            if (table && table.querySelectorAll("tbody tr").length > 0) {
+                if (!table.dataset.paginationInitialized) {
+                    initTableControls(tableId, rowsPerPage);
+                    table.dataset.paginationInitialized = "true";
+                }
+            } else {
+                setTimeout(tryInit, 50);
+            }
+        }
+        tryInit();
+    }
+
+    const tables = document.querySelectorAll('[data-pagination="report"]');
+
+    tables.forEach(table => {
+        const tableId = table.id;
+        const rows = table.getAttribute("data-rows") || 5;
+
+        if (tableId) {
+            initTableWhenReady(tableId, parseInt(rows));
+        }
+    });
+
+});
+</script>

@@ -1,0 +1,62 @@
+{% extends "employees/base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Employees</h3>
+  <a class="btn btn-sm btn-success d-flex" href="{% url 'employee_create_canonical' %}"> + Add Employee</a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    
+    <input id="globalSearch" class="form-control mb-3" placeholder="Search employees...">
+    {% include "components/LiveSearch.html" %}
+
+    <div class="table-responsive">
+      <table class="table table-hover" id="employeeTable">
+        <thead class="table-dark">
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Department</th>
+            <th>Designation</th>
+            <th>Joining Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for e in employees %}
+          <tr>
+            <td>
+              {% if e.photo %}
+              <img src="{{ e.photo.url }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+              {% else %}-{% endif %}
+            </td>
+            <td>{{ e.name }}</td>
+            <td>{{ e.email }}</td>
+            <td>{{ e.phone }}</td>
+            <td>{{ e.department }}</td>
+            <td>{{ e.designation }}</td>
+            <td>{{ e.joining_date }}</td>
+            <td>
+              <a class="btn btn-sm btn-info" href="{% url 'employee_detail' e.id %}">View</a>
+              <a class="btn btn-sm btn-warning" href="{% url 'employee_update' e.id %}">Edit</a>
+              <a class="btn btn-sm btn-danger" href="{% url 'employee_delete' e.id %}">Delete</a>
+              <a class="btn btn-sm btn-primary" href="{% url 'mark_attendance_by_hr' e.id %}">Attendance</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-center">No employees found.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% include "components/TableControls.html" with table_id="employeeTable" %}
+    </div>
+    
+  </div>
+</div>
+
+<script>initTableControls("employeeTable", 5);</script>
+{% endblock %}

@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+  <h4 class="mb-0 fw-bold">HR Dashboard</h4>
+
+    <form method="get" class="d-flex align-items-center gap-2">
+
+  <select name="year" class="form-select form-select-sm">
+    <option value="">Year</option>
+    {% for y in years %}
+      <option value="{{ y }}" {% if request.GET.year == y|stringformat:"s" %}selected{% endif %}>
+        {{ y }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <select name="month" class="form-select form-select-sm">
+    <option value="">Month</option>
+    {% for num,name in months %}
+      <option value="{{ num }}" {% if request.GET.month == num|stringformat:"s" %}selected{% endif %}>
+        {{ name }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <select name="date" class="form-select form-select-sm">
+  <option value="">Day</option>
+  {% for d in day_range %}
+  <option value="{{ d }}" {% if request.GET.date == d|stringformat:"s" %}selected{% endif %}>
+  {{ d }}
+  </option>
+  {% endfor %}
+  </select>
+
+  <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+  <a class="btn btn-sm btn-secondary" href="{% url 'hr_dashboard' %}">Reset</a>
+
+</form>
+</div>
+
+<div class="row g-3 mb-5">
+  
+  <div class="col-md-3">
+  <div class="card shadow-sm w-100 h-100">
+      <div class="card-body">
+        <div class="text-muted">Employees</div>
+        <div class="row">
+          <div class="col-12">
+            <h6 class="text-primary">Total</h6>
+            <h4 class="text-primary">{{ total_employees }}</h4>
+          </div>
+         </div>
+        <br>
+        <a class="btn btn-sm btn-outline-primary mt-auto" href="{% url 'employee_list' %}">View</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+  <div class="card shadow-sm w-100 h-100">
+    <div class="card-body">
+      <div class="text-muted"> Attendance</div>
+      
+        <div class="row">
+        <div class="col-6 border-end">
+          <h6 class="text-success">Present</h6>
+          <h4 class="text-success">{{ present_count }}</h4>
+        </div>
+        <div class="col-6">
+          <h6 class="text-danger">Leave</h6>
+          <h4 class="text-danger">{{ absent_count }}</h4>
+        </div>
+        </div>
+
+       <br>
+       <a class="btn btn-sm btn-outline-primary mt-auto" href="{% url 'attendance_list' %}">View</a>
+    </div>
+
+  </div>
+  </div>
+
+  <div class="col-md-3 d-flex">
+    <div class="card shadow-sm w-100 h-100">
+      <div class="card-body">
+        <div class="text-muted">Leaves</div>
+         <div class="d-flex justify-content-between">
+
+          <div class="text-center">
+            <h6 class="text-warning">Pending</h6>
+            <h4 class="text-warning">{{ pending_leaves }}</h4>
+          </div>
+
+          <div class="text-center">
+            <h6 class="text-success">Approved</h6>
+            <h4 class="text-success">{{ approved_leaves }}</h4>
+          </div>
+
+          <div class="text-center">
+            <h6 class="text-danger">Rejected</h6>
+            <h4 class="text-danger">{{ rejected_leaves }}</h4>
+          </div>
+          
+         </div>
+         <br>
+        <a class="btn btn-sm btn-outline-primary mt-auto" href="{% url 'hr_all_leave_requests' %}">View</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 d-flex">
+    <div class="card shadow-sm w-100 h-100">
+      <div class="card-body">
+        <div class="text-muted">Payroll</div>
+        <div class="row">
+          <div class="col-12">
+            <h6 class="text-primary">Total</h6>
+            <h4 class="text-primary">{{ payroll_records_this_month }}</h4>
+          </div>
+         </div>
+         <br>
+        <a class="btn btn-sm btn-outline-primary mt-auto" href="{% url 'all_salary_history' %}">View</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="row g-3">
+
+  {{ dept_labels|json_script:"dept-labels" }}
+  {{ dept_counts|json_script:"dept-counts" }}  
+
+  <!-- Department Chart -->
+  <div class="col-md-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">Employees by Department</h5>
+        <div style="height:300px;">
+          <canvas id="deptChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{ attendance_labels|json_script:"attendance-labels" }}
+  {{ attendance_counts|json_script:"attendance-counts" }}
+
+  <!-- Attendance Chart -->
+  <div class="col-md-3">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">Attendance</h5>
+        <div style="height:300px;">
+          <canvas id="attendanceChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{ payroll_labels|json_script:"payroll-labels" }}
+  {{ payroll_totals|json_script:"payroll-totals" }}
+
+  <div class="col-md-4">
+  <div class="card shadow-sm h-100">
+  <div class="card-body">
+    <h5 class="mb-3">Payroll Status</h5>
+    <div style="height:300px;">
+      <canvas id="payrollChart"></canvas>
+    </div>
+  </div>
+  </div>
+  </div>
+</div>
+
+<div class ="d-flex gap-5 flex-wrap mt-5 justify-content-center">
+    <a href="{% url 'employees_joining_report' %}" class="btn btn-primary">Employees report</a>
+    <a href="{% url 'attendance_report' %}" class="btn btn-primary">Attendance report</a>   
+    <a href="{% url 'leave_report' %}" class="btn btn-primary">Leave report</a>
+    <a href="{% url 'admin_salary_list' %}" class="btn btn-primary">Payroll report</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  // ====== DEPARTMENT CHART ======
+  const deptLabels = JSON.parse(
+    document.getElementById('dept-labels').textContent
+  );
+
+  const deptData = JSON.parse(
+    document.getElementById('dept-counts').textContent
+  );
+
+  const deptCtx = document.getElementById('deptChart').getContext('2d');
+
+  new Chart(deptCtx, {
+  type: 'pie', 
+  data: {
+    labels: deptLabels,
+    datasets: [{
+      label: 'Employees',
+      data: deptData,
+      backgroundColor: [
+        '#ff6384',
+        '#36a2eb',
+        '#ffce56',
+        '#4bc0c0',
+        '#9966ff',
+        '#ff9f40'
+      ],
+      borderColor: '#ffffff',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'left'
+      }
+    }
+  }
+});
+
+
+  // ====== ATTENDANCE CHART ======
+  const attLabels = JSON.parse(
+    document.getElementById('attendance-labels').textContent
+  );
+
+  const attData = JSON.parse(
+    document.getElementById('attendance-counts').textContent
+  );
+
+  const attCtx = document.getElementById('attendanceChart').getContext('2d');
+
+  new Chart(attCtx, {
+    type: 'bar',
+    data: {
+      labels: attLabels,
+      datasets: [{
+        label: 'Attendance',
+        data: attData,
+        backgroundColor: [
+          '#28a745',  
+          '#dc3545'   
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
+
+
+  // ====== PAYROLL CHART ======
+  const payrollLabels = JSON.parse(
+    document.getElementById('payroll-labels').textContent
+  );
+
+  const payrollTotals = JSON.parse(
+    document.getElementById('payroll-totals').textContent
+  );
+
+  const payrollCtx = document.getElementById('payrollChart').getContext('2d');
+
+  new Chart(payrollCtx, {
+    type: 'line',
+    data: {
+      labels: payrollLabels,
+      datasets: [{
+        label: 'Total Salary Paid',
+        data: payrollTotals,
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13,110,253,0.2)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+</script>
+
+</div>
+
+{% endblock %}

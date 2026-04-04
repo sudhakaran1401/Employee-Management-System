@@ -1,0 +1,87 @@
+{% extends "employees/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>📋 Leave Balance</h2>
+
+    {% if viewer_role == "EMPLOYEE" %}
+      <a class="btn btn-secondary" href="{% url 'my_leave_requests' %}">My Leave Requests</a>
+    {% endif %}
+  </div>
+
+  <p class="text-muted">
+    Employee: <strong>{{ employee }}</strong>
+  </p>
+
+  <div class="row mt-3">
+    <div class="col-md-3">
+      <div class="card text-white bg-primary mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Total Applied</h6>
+          <h3 class="mb-0">{{ total }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card text-white bg-success mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Approved</h6>
+          <h3 class="mb-0">{{ approved }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card text-white bg-warning mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Pending</h6>
+          <h3 class="mb-0">{{ pending }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card text-white bg-danger mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Rejected</h6>
+          <h3 class="mb-0">{{ rejected }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow mt-3">
+    <div class="card-body">
+      <h5 class="mb-3">Leave taken summary</h5>
+      <ul class="list-group">
+        <li class="list-group-item bg-light text-dark d-flex justify-content-between align-items-center"> Sick Leaves 
+        <span class="badge bg-success text-dark rounded-0 fs-5 px-3 py-2">{{ sick_applied }}/{{ SICK_MAX }}</span>
+        </li>
+
+         <li class="list-group-item bg-light text-dark d-flex justify-content-between align-items-center">Casual Leaves 
+        <span class="badge bg-warning text-dark rounded-0 fs-5 px-3 py-2">{{ casual_applied }}/{{ CASUAL_MAX }}</span>
+        </li>
+
+        <li class="list-group-item bg-light text-dark d-flex justify-content-between align-items-center">Annual Leaves 
+        <span class="badge bg-info text-dark rounded-0 fs-5 px-3 py-2">{{ annual_applied }}/{{ ANNUAL_MAX }}</span>
+        </li>
+  
+        <li class="list-group-item bg-light text-dark d-flex justify-content-between align-items-center">Total Leaves 
+        <span class="badge bg-danger text-dark rounded-0 fs-5 px-3 py-2">{{ total_applied }}/{{ TOTAL_MAX }}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="mt-4">
+  {% if viewer_role == "Employee" %}
+  <a href="{% url 'apply_leave' %}" class="btn btn-primary">Apply Leave</a>
+  <a href="{% url 'my_leave_requests' %}" class="btn btn-primary">Leave Requests</a>
+  {% elif viewer_role == "HR" %}
+  <a href="{% url 'hr_employee_leave_requests' employee.id %}" class="btn btn-primary">Leave Requests</a>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

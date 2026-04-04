@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card shadow-sm">
+      <div class="card-body">
+
+        <h3 class="mb-3">
+        {% if is_update %}
+        Update Salary
+        {% else %}
+        Create Salary
+        {% endif %}
+        </h3>
+
+        {% include "components/messages.html" %}
+        
+        <form method="post" autocomplete="off">
+          {% csrf_token %}
+
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label">Employee</label>
+
+              {% if is_update %}
+              <input type="hidden" name="employee" value="{{ form.instance.employee.id }}">
+              <input type="text" class="form-control" value="{{ form.instance.employee }}" readonly>
+              {% else %}
+              {{ form.employee }}
+              {% endif %}
+
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Pay month</label>
+
+              {% if is_update %}
+              <input type="hidden" name="pay_month" value="{{ form.instance.pay_month|date:'Y-m-d' }}">
+              <input type="text" class="form-control"value="{{ form.instance.pay_month }}" readonly>
+              {% else %}
+              {{ form.pay_month }}
+              {% endif %}
+
+            </div>
+ 
+            <div class="row justify-content-center">
+            <div class="col-md-4">
+              <label class="form-label">Amount per Day</label>
+              {{ form.amt_per_day }}
+            </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Basic</label>
+              {{ form.basic }}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">HRA</label>
+              {{ form.hra }}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Allowances</label>
+              {{ form.allowances }}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">PF</label>
+              {{ form.pf }}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Tax</label>
+              {{ form.tax }}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Other deductions</label>
+              {{ form.other_deductions }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Paid date</label>
+              {{ form.paid_date }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Notes</label>
+              {{ form.notes }}
+            </div>
+
+          </div>
+
+          <div class="mt-3 d-flex gap-2">
+
+            <button class="btn btn-primary" type="submit">
+              {% if is_update %}
+              Update Salary
+              {% else %}
+              Create Salary
+              {% endif %}
+            </button>
+
+            <a class="btn btn-outline-secondary"
+               href="{% url 'all_salary_history' %}">
+               Payroll List
+            </a>
+
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+
+    const amtInput = document.getElementById("id_amt_per_day");
+    if (!amtInput) return;
+
+    function calculateSalary() {
+        let amt = parseFloat(amtInput.value);
+
+        // 🔥 If empty → clear all fields
+        if (!amt) {
+            document.getElementById("id_basic").value = "";
+            document.getElementById("id_hra").value = "";
+            document.getElementById("id_allowances").value = "";
+            document.getElementById("id_pf").value = "";
+            document.getElementById("id_tax").value = "";
+            document.getElementById("id_other_deductions").value = "";
+            return;
+        }
+
+        let monthly = amt * 30;
+
+        let basic = monthly * 0.7;
+        let hra = monthly * 0.2;
+        let allowances = monthly * 0.1;
+        let pf = basic * 0.05;
+        let tax = basic * 0.02;
+
+        document.getElementById("id_basic").value = basic.toFixed(2);
+        document.getElementById("id_hra").value = hra.toFixed(2);
+        document.getElementById("id_allowances").value = allowances.toFixed(2);
+        document.getElementById("id_pf").value = pf.toFixed(2);
+        document.getElementById("id_tax").value = tax.toFixed(2);
+        document.getElementById("id_other_deductions").value = 0;
+    }
+
+    // ✅ Only one event is enough
+    amtInput.addEventListener("input", calculateSalary);
+
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    function initPagination(tableId, defaultRows = 5) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        const rows = Array.from(table.querySelectorAll("tbody tr"));
+
+        let currentPage = 1;
+        let rowsPerPage = defaultRows;
+
+        const prevBtn = document.getElementById(tableId + "_prev");
+        const nextBtn = document.getElementById(tableId + "_next");
+        const rowsSelect = document.getElementById(tableId + "_rowsPerPage");
+        const pageInfo = document.getElementById(tableId + "_pageInfo");
+
+        function render() {
+            const totalRows = rows.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+
+            rows.forEach(row => row.style.display = "none");
+
+            rows.slice(start, end).forEach(row => {
+                row.style.display = "table-row";
+            });
+
+            if (pageInfo) {
+                pageInfo.innerText = `${start + 1}–${Math.min(end, totalRows)} of ${totalRows}`;
+            }
+
+            if (prevBtn) prevBtn.disabled = currentPage === 1;
+            if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+        }
+
+        if (rowsSelect) {
+            rowsSelect.addEventListener("change", function () {
+                rowsPerPage = parseInt(this.value);
+                currentPage = 1;
+                render();
+            });
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener("click", () => {
+                currentPage--;
+                render();
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => {
+                currentPage++;
+                render();
+            });
+        }
+
+        render();
+    }
+
+    // 🔥 AUTO APPLY ONLY FOR REPORT TABLES
+    const tables = document.querySelectorAll("[data-pagination]");
+
+    tables.forEach(table => {
+        const tableId = table.id;
+        const rows = table.getAttribute("data-rows") || 5;
+
+        if (tableId) {
+            initPagination(tableId, parseInt(rows));
+        }
+    });
+
+});
+</script>

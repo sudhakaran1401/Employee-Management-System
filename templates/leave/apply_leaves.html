@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card shadow-sm">
+      <div class="card-body">
+
+        <!-- ✅ Dynamic Title -->
+        <h3 class="mb-3">
+          {% if is_update %}Update Leave{% else %}Apply Leave{% endif %}
+        </h3>
+
+        <!-- ✅ Messages -->
+         {% include "components/messages.html" %}
+
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label">Start date</label>
+            {{ form.start_date }}
+            {{ form.start_date.errors }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">End date</label>
+            {{ form.end_date }}
+            {{ form.end_date.errors }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Leave Type</label>
+            {{ form.leave_type }}
+            {{ form.leave_type.errors }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Reason</label>
+            {{ form.reason }}
+            {{ form.reason.errors }}
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          <div class="d-flex gap-2">
+            <!-- ✅ Dynamic Button -->
+            <button class="btn btn-primary" type="submit">
+              {% if is_update %}Update{% else %}Submit{% endif %}
+            </button>
+
+            <a class="btn btn-outline-secondary" href="{% url 'my_leave_requests' %}">
+              My Requests
+            </a>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

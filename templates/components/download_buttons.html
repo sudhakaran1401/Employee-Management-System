@@ -1,0 +1,14 @@
+{% if csv_download_url and pdf_download_url %}
+
+  <button class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown"> Download </button>
+  <ul class="dropdown-menu">
+    <li>
+      <a class="dropdown-item download-btn" href="{{ csv_download_url }}?{{ request.GET.urlencode }}" data-message="CSV report downloaded successfully">CSV</a>
+    </li>
+    <li>
+      <a class="dropdown-item download-btn" href="{{ pdf_download_url }}?{{ request.GET.urlencode }}" data-message="PDF report downloaded successfully">PDF</a>
+    </li>
+  </ul>
+
+
+{% endif %}

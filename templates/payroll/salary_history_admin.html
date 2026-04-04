@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Payroll report</h3>
+  <a class="btn btn-primary" href="{% url 'create_salary' %}">Create Salary</a>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-2">
+          <label class="form-label">Month</label>
+          {{ form.month }}
+      </div>
+      <div class="col-md-2">
+          <label class="form-label">Year</label>
+          {{ form.year }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Employee</label>
+        {{ form.employee }}
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-primary" type="submit">Generate</button>
+        <a class="btn btn-secondary" href="{% url 'admin_salary_list' %}">Reset</a>
+        {% include "components/download_buttons.html" %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if not request.GET.month and not request.GET.year and not request.GET.employee %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <p class="text-muted mb-0 text-center">
+      Use the filters above to generate a report.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+{% if filter_applied %}
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h5 class="mb-3">Salary Chart</h5>
+    <canvas id="salaryChart" height="90"></canvas>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+
+    <!-- ✅ ALWAYS SHOW TABLE -->
+    <div class="table-responsive">
+      <table class="table table-hover align-middle" id="SalaryAdminTable" data-pagination data-rows="5">
+        <thead class="table-dark">
+          <tr>
+            <th>Employee</th>
+            <th>Month</th>
+            <th>Gross</th>
+            <th>Deductions</th>
+            <th>Net Pay</th>
+            <th>Paid Date</th>
+            <th class="text-end">Payslip</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% if rows %}
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.employee.name }}</td>
+                <td>{{ r.pay_month|date:"M Y" }}</td>
+                <td>{{ r.gross }}</td>
+                <td>{{ r.total_deductions }}</td>
+                <td><b>{{ r.net_pay }}</b></td>
+                <td>{{ r.paid_date|date:"d M Y"|default_if_none:"-" }}</td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'hr_payslip_view' r.id %}">View</a>
+                  <a class="btn btn-sm btn-outline-primary download-btn" href="{% url 'payslip_pdf' r.id %}" data-message="Payslip downloaded successfully">PDF</a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <!-- ✅ EMPTY STATE INSIDE TABLE -->
+            <tr>
+              <td colspan="7" class="text-center text-muted">
+                No payroll records.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      {% include "components/TableControls.html" with table_id="SalaryAdminTable" %} 
+    </div>
+     
+  </div>
+</div>
+{% include "components/TablePagination.html" %}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+
+  const ctx = document.getElementById("salaryChart");
+  if (!ctx) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const url = "{% url 'salary_chart_api' %}?" + params.toString();
+
+  fetch(url)
+    .then(r => r.json())
+    .then(payload => {
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: payload.labels,
+          datasets: [{
+            label: "Total Net Pay",
+            data: payload.data,
+            borderWidth: 2,
+            tension: 0.3
+          }]
+        }
+      });
+    });
+
+})();
+</script>
+
+{% endblock %}

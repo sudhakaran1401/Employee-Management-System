@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3">Attendance Report</h3>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+
+      <div class="col-md-2">
+        <label class="form-label">Month</label>
+        {{ form.month }}
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Year</label>
+        {{ form.year }}
+      </div>
+
+      {% if is_hr %}
+      <div class="col-md-4">
+        <label class="form-label">Employee</label>
+        {{ form.employee }}
+      </div>
+      {% endif %}
+
+      <div class="col-md-4">
+        <button class="btn btn-primary" type="submit">Generate</button>
+        <a class="btn btn-secondary" href="{% url 'attendance_report' %}">Reset</a>
+        {% include "components/download_buttons.html" %}
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% if not request.GET.month and not request.GET.year %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <p class="text-muted text-center mb-0">
+      Use the filters above to generate a report.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+{% if filter_applied %}
+
+<div class="row g-3 mb-3 justify-content-start">
+  
+  <div class="col-md-3">
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="text-muted">Present</div>
+        <h4>{{ stats.Present }}</h4>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="text-muted">Leave</div>
+        <h4>{{ stats.Leave }}</h4>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="text-muted">Holiday</div>
+        <h4>{{ stats.Holiday }}</h4>
+      </div>
+    </div>
+
+  <!--
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="text-muted">Absent</div>
+        <h4>{{ stats.Absent }}</h4>
+      </div>
+    </div>-->
+  </div>
+
+  <div class="col-md-4">
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+
+        <h5 class="mb-3">Attendance Status</h5>
+
+        <canvas id="statusChart" style="max-width:350px; max-height:250px;"></canvas>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+  
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle" id="MonthlyReportTable" data-pagination data-rows="5">
+        <thead class="table-dark">
+          <tr>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for r in records %}
+        <tr>
+          <td>{{ r.employee.name }}</td>
+          <td>{{ r.employee.department}}</td>
+          <td>{{ r.date }}</td>
+          <td>{{ r.status }}</td>
+          <td>{{ r.check_in|default:"-" }}</td>
+          <td>{{ r.check_out|default:"-" }}</td>
+          <td>{{ r.notes|default:"-" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% include "components/TableControls.html" with table_id="MonthlyReportTable" %}
+    </div>
+
+    
+  </div>
+</div>
+{% include "components/TablePagination.html" %}
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+const chartCanvas = document.getElementById("statusChart");
+if(!chartCanvas) return;
+
+const params = new URLSearchParams(window.location.search);
+
+// ✅ FIXED
+if(!params.get("month") && !params.get("year")) return;
+
+fetch("{% url 'attendance_status_chart' %}?" + params.toString())
+.then(response => response.json())
+.then(data => {
+
+    if(window.myChart){
+        window.myChart.destroy();
+    }
+
+    window.myChart = new Chart(chartCanvas,{
+        type:"pie",
+        data:{
+            labels:["Present","Leave","Holiday"],
+            datasets:[{
+                data:[
+                    data.data[0],
+                    data.data[1],
+                    data.data[2]
+                ],
+                backgroundColor:[
+                    "#28a745",
+                    "#dc3545",
+                    "#17a2b8"
+                ]
+            }]
+        },
+        options:{
+            responsive:true,
+            plugins:{
+                legend:{
+                    position:"top"
+                }
+            }
+        }
+    });
+
+});
+});
+</script>
+
+{% endblock %}

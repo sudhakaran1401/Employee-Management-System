@@ -1,0 +1,209 @@
+{% extends "employees/base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <h2>Leave Report</h2>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+
+      <form method="get" class="row g-3 align-items-end">
+
+        <div class="col-md-2">
+          <label class="form-label">Month</label>
+          {{ form.month }}
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Year</label>
+          {{ form.year }}
+        </div>
+
+        {% if is_hr %}
+        <div class="col-md-4">
+          <label class="form-label">Employee</label>
+          {{ form.employee }}
+        </div>
+        {% endif %}
+
+        <div class="col-md-4">
+        <button class="btn btn-primary" type="submit">Generate</button>
+        <a class="btn btn-secondary" href="{% url 'leave_report' %}">Reset</a>
+        {% include "components/download_buttons.html" %}
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  {% if not request.GET.month and not request.GET.year and not request.GET.employee %}
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <p class="text-muted mb-0 text-center">
+        Use the filters above to generate a report.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if filter_applied %}
+
+  <!-- CARDS -->
+  <div class="row mt-3">
+
+    <div class="col-md-3">
+      <div class="card text-white bg-primary mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Total Applied</h6>
+          <h3 class="mb-0">{{ total }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card text-white bg-success mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Approved</h6>
+          <h3 class="mb-0">{{ approved }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card text-white bg-warning mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Pending</h6>
+          <h3 class="mb-0">{{ pending }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card text-white bg-danger mb-3 shadow">
+        <div class="card-body">
+          <h6 class="card-title">Rejected</h6>
+          <h3 class="mb-0">{{ rejected }}</h3>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CHART -->
+  <div class="card shadow mt-4">
+    <div class="card-body">
+      <h5>Leave Requests</h5>
+      <canvas id="leaveChart" style="max-height:250px;"></canvas>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card shadow mt-4">
+    <div class="card-body">
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="LeaveReportTable" data-pagination data-rows="5">
+          <thead class="table-dark">
+            <tr>
+              <th>Employee</th>
+              <th>Department</th>
+              <th>Leave type</th>
+              <th>Days</th>
+              <th>Dates</th>
+              <th>Reason</th>
+              <th>Applied</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% if leave_requests %}
+              {% for r in leave_requests %}
+              <tr>
+                <td>{{ r.employee.name }}</td>
+
+                <td>{{ r.employee.department}}</td>
+
+                <td>{{ r.leave_type }}</td>
+
+                <td>{{ r.total_days }}</td>
+
+                <td>{{ r.start_date }} → {{ r.end_date }}</td>
+
+                <td style="max-width: 320px;"> {{ r.reason|default:"-" }}</td>
+
+                <td>{{ r.applied_at|date:"d M Y, h:i A" }}</td>
+
+                <td>
+                  {% if r.status == "APPROVED" %}
+                    <span class="badge bg-success">Approved</span>
+                  {% elif r.status == "PENDING" %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                  {% else %}
+                    <span class="badge bg-danger">Rejected</span>
+                  {% endif %}
+                </td>
+
+
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="8" class="text-center text-muted">
+                  No leave records found.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+
+        </table>
+        {% include "components/TableControls.html" with table_id="LeaveReportTable" %}
+      </div>
+      
+    </div>
+  </div>
+  {% include "components/TablePagination.html" %}
+  {% endif %}
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% if filter_applied %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const approved = Number("{{ approved|default:'0' }}");
+    const pending = Number("{{ pending|default:'0' }}");
+    const rejected = Number("{{ rejected|default:'0' }}");
+
+    const ctx = document.getElementById('leaveChart');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Approved', 'Pending', 'Rejected'],
+            datasets: [{
+                label: 'Leave Requests',
+                data: [approved, pending, rejected],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
+
+});
+</script>
+{% endif %}
+
+{% endblock %}

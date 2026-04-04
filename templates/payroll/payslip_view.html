@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>Payslip Preview</h3>
+
+<div class="card shadow-sm">
+<div class="card-body">
+
+<h5>{{ salary.employee.name }}</h5>
+<p><b>Email:</b> {{ salary.employee.email }}</p>
+<p><b>Department:</b> {{ salary.employee.department }}</p>
+<p><b>Designation:</b> {{ salary.employee.designation }}</p>
+<p><b>Pay Month:</b> {{ salary.pay_month|date:"M Y" }}</p>
+
+<hr>
+
+<table class="table table-bordered">
+<thead>
+<tr>
+<th>Earnings</th>
+<th>Amount</th>
+<th>Deductions</th>
+<th>Amount</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>Basic</td>
+<td>{{ salary.basic }}</td>
+<td>PF</td>
+<td>{{ salary.pf }}</td>
+</tr>
+
+<tr>
+<td>HRA</td>
+<td>{{ salary.hra }}</td>
+<td>Tax</td>
+<td>{{ salary.tax }}</td>
+</tr>
+
+<tr>
+<td>Allowances</td>
+<td>{{ salary.allowances }}</td>
+<td>Other</td>
+<td>{{ salary.other_deductions }}</td>
+</tr>
+
+<tr>
+<td><b>Gross</b></td>
+<td><b>{{ salary.gross }}</b></td>
+<td><b>Total Deductions</b></td>
+<td><b>{{ salary.total_deductions }}</b></td>
+</tr>
+
+<tr>
+<td colspan="2"></td>
+<td><b>Net Pay</b></td>
+<td><b>{{ salary.net_pay }}</b></td>
+</tr>
+
+</tbody>
+</table>
+
+{% if salary.notes %}
+<p><b>Notes:</b> {{ salary.notes }}</p>
+{% endif %}
+
+<a class="btn btn-success" href="{% url 'payslip_pdf' salary.id %}"> PDF</a>
+
+{% if request.user.is_staff %}
+<a class="btn btn-warning" href="{% url 'update_salary' salary.id %}">Update</a>
+{% endif %}
+
+</div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3">Employees Report</h3>
+
+<!-- 🔹 FILTER -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+
+      <div class="col-md-2">
+        <label class="form-label">Year</label>
+        {{ form.year }}
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Month</label>
+        {{ form.month }}
+      </div>
+
+      <div class="col-md-4">
+        <button class="btn btn-primary" type="submit">Generate</button>
+        <a class="btn btn-secondary" href="{% url 'employees_joining_report' %}">Reset</a>
+        {% include "components/download_buttons.html" %}
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<!-- 🔹 EMPTY STATE (same as salary) -->
+{% if not request.GET.month and not request.GET.year %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <p class="text-muted text-center mb-0">
+      Use the filters above to generate a report.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+<!-- 🔹 MAIN CONTENT -->
+{% if filter_applied %}
+
+<!-- 🔹 CHART -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h5>Joining Chart</h5>
+    <canvas id="joinChart" height="90"></canvas>
+  </div>
+</div>
+
+<!-- 🔹 TABLE -->
+<div class="card shadow-sm">
+  <div class="card-body">
+
+    <div class="table-responsive">
+      <table class="table table-hover" id="EmployeeReportTable" data-pagination data-rows="5">
+
+        <thead class="table-dark">
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Department</th>
+            <th>Designation</th>
+            <th>Joining Date</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% if employees %}
+            {% for emp in employees %}
+            <tr>
+              <td>
+                {% if emp.photo %}
+                  <img src="{{ emp.photo.url }}" style="width:40px;height:40px;border-radius:50%;">
+                {% else %}-{% endif %}
+              </td>
+              <td>{{ emp.name }}</td>
+              <td>{{ emp.email }}</td>
+              <td>{{ emp.phone }}</td>
+              <td>{{ emp.department }}</td>
+              <td>{{ emp.designation }}</td>
+              <td>{{ emp.joining_date }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">
+                No employees found.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+
+      </table>
+
+      {% include "components/TableControls.html" with table_id="EmployeeReportTable" %}
+    </div>
+
+  </div>
+</div>
+
+{% include "components/TablePagination.html" %}
+
+{% endif %}
+
+<!-- 🔹 CHART SCRIPT (MATCH SALARY STYLE) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+(function () {
+
+  const ctx = document.getElementById("joinChart");
+  if (!ctx) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const url = "{% url 'employee_chart_api' %}?" + params.toString();
+
+  fetch(url)
+    .then(r => r.json())
+    .then(payload => {
+
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: payload.labels,
+          datasets: [{
+            label: "Employees Joined",
+            data: payload.data,
+            borderWidth: 1
+          }]
+        }
+      });
+
+    });
+
+})();
+</script>
+
+{% endblock %}

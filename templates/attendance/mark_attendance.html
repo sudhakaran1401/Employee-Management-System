@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h3 class="mb-3">Mark Attendance</h3>
+        <!-- ✅ Messages -->
+        {% include "components/messages.html" %}
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Employee</label>
+              <input type="text" class="form-control" value="{{ employee }}" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date</label>
+              {{ form.date }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              {{ form.status }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Check-in</label>
+              {{ form.check_in }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Check-out</label>
+              {{ form.check_out }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              {{ form.notes }}
+            </div>
+          </div>
+
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Save</button>
+            <!-- <a class="btn btn-outline-secondary" href="{% url 'attendance_report' %}">Monthly Report</a> -->
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
