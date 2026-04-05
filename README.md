@@ -118,7 +118,6 @@ http://127.0.0.1:8000/
 ## 🔐 Default Notes
 
 * Uses SQLite database by default
-* No authentication system implemented yet (can be added)
 
 ---
 
