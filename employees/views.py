@@ -90,6 +90,8 @@ def post_login_redirect(request):
 @login_required
 def hr_dashboard(request):
 
+    is_hr = request.user.groups.filter(name="HR").exists()
+
     if not _hr_or_admin(request.user):
         return HttpResponseForbidden("You don't have access to this page.")
 
@@ -248,6 +250,8 @@ def hr_dashboard(request):
 
     return render(request, "dashboard/hr_dashboard.html", {
 
+        "is_hr": is_hr,
+
         "total_employees": total_employees,
 
         "pending_leaves": pending_leaves,
@@ -281,9 +285,15 @@ def hr_dashboard(request):
 
 @login_required
 def employee_dashboard(request):
+    
+    is_hr = request.user.groups.filter(name="HR").exists()
 
     def _employee_only(user):
-        return user.is_superuser or user.groups.filter(name="EMPLOYEE").exists()
+        return (
+        user.is_superuser or
+        user.groups.filter(name="EMPLOYEE").exists() or
+        user.groups.filter(name="HR").exists()
+    )
 
     if not _employee_only(request.user):
         return HttpResponseForbidden("You don't have access to this page.")
@@ -452,6 +462,7 @@ def employee_dashboard(request):
         latest_salary = 0
 
     return render(request, "dashboard/employee_dashboard.html", {
+        "is_hr": is_hr,
         "profile": profile,
         "my_attendance_month": my_attendance_month,
         "attendance_month_labels": month_labels,

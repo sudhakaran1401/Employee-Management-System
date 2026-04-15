@@ -173,4 +173,23 @@ function capitalize(text) {
     transition: opacity 0.3s ease;
 }
 </style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const toggle = document.getElementById("dashboardToggle");
+
+  if (toggle) {
+    toggle.addEventListener("change", function () {
+
+      if (this.checked) {
+        window.location.href = "{% url 'employee_dashboard' %}";
+      } else {
+        window.location.href = "{% url 'hr_dashboard' %}";
+      }
+
+    });
+  }
+
+});
+</script>
 </html>

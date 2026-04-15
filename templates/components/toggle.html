@@ -1,0 +1,22 @@
+{% if is_hr %}
+<div class="d-flex justify-content-end mb-3">
+
+  <div class="bg-white shadow-sm px-3 py-2 rounded-pill d-flex align-items-center">
+
+    <span class="me-2 fw-semibold text-muted">HR</span>
+
+    <div class="form-check form-switch m-0">
+      <input 
+        class="form-check-input" 
+        type="checkbox" 
+        id="dashboardToggle"
+        {% if request.path == '/me/dashboard/' %}checked{% endif %}
+      >
+    </div>
+
+    <span class="ms-2 fw-semibold text-dark">Employee</span>
+
+  </div>
+
+</div>
+{% endif %}
