@@ -104,9 +104,14 @@ def admin_attendance_list(request):
 
 @login_required
 def mark_attendance(request, employee_id=None):
+    employees = None 
 
     if request.user.is_staff:
-        employee = get_object_or_404(Employee, id=employee_id)
+        if employee_id:
+            employee = get_object_or_404(Employee, id=employee_id)
+        else:
+            employee = None 
+            employees = Employee.objects.all()
     else:
         profile = get_object_or_404(EmployeeProfile, user=request.user)
         employee = profile.employee
@@ -118,6 +123,11 @@ def mark_attendance(request, employee_id=None):
 
         if form.is_valid():
             attendance = form.save(commit=False)
+
+            if request.user.is_staff and not employee:
+                emp_id = request.POST.get("employee")
+                employee = get_object_or_404(Employee, id=emp_id)
+
             attendance.employee = employee 
 
             if Attendance.objects.filter(
@@ -139,7 +149,6 @@ def mark_attendance(request, employee_id=None):
                 }
 
         else:
-            # Get first error
             error_text = None
             for errors in form.errors.values():
                 for error in errors:
@@ -159,7 +168,8 @@ def mark_attendance(request, employee_id=None):
     return render(request, "attendance/mark_attendance.html", {
         "form": form,
         "employee": employee,
-        "message": message
+        "message": message,
+        "employees": employees 
     })
 
 @login_required

@@ -13,7 +13,24 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Employee</label>
-              <input type="text" class="form-control" value="{{ employee }}" readonly>
+
+              {% if employees %}
+                <!-- ✅ Dropdown case -->
+                <select name="employee" class="form-control" required>
+                  <option value="">-- Select Employee --</option>
+                  {% for emp in employees %}
+                    <option value="{{ emp.id }}"
+                      {% if employee and emp.id == employee.id %}selected{% endif %}>
+                      {{ emp.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+
+              {% else %}
+                <input type="text" class="form-control" value="{{ employee.name }}" readonly>
+                <input type="hidden" name="employee" value="{{ employee.id }}">
+              {% endif %}
+
             </div>
             <div class="col-md-6">
               <label class="form-label">Date</label>
