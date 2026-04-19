@@ -31,7 +31,7 @@ class SalaryHistoryAdmin(admin.ModelAdmin):
     change_list_template = "admin/salary_list.html"
 
     def pay_month(self, obj):
-        return obj.pay_month.strftime("%b %Y")   # Mar 2026
+        return obj.pay_month.strftime("%b %Y") 
 
     pay_month.short_description = "Pay Month"
 
@@ -54,22 +54,19 @@ class SalaryHistoryAdmin(admin.ModelAdmin):
 
                     df.columns = df.columns.str.strip().str.lower()
 
+                    required_columns = ['employee_id', 'pay_month', 'amt_per_day', 'paid_date']
+
+                    for col in required_columns:
+                        if col not in df.columns:
+                            raise Exception(f"Missing column: {col}")
+
                     for _, row in df.iterrows():
                         employee = Employee.objects.get(id=row['employee_id'])
 
                         SalaryHistory.objects.create(
                             employee=employee,
                             pay_month=row['pay_month'],
-                            basic=row['basic'],
-                            hra=row['hra'],
-                            allowances=row['allowances'],
-                            pf=row['pf'],
-                            tax=row['tax'],
-                            other_deductions=row['other_deductions'],
-                            stored_gross=row['gross'],
-                            stored_total_deductions=row['total_deductions'],
-                            stored_net_pay=row['net_pay'],
-
+                            amt_per_day=row['amt_per_day'],
                             paid_date=row.get('paid_date', None)
                         )
 

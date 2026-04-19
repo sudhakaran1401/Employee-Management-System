@@ -11,10 +11,12 @@ from django.urls import reverse
 from reportlab.lib.pagesizes import A4
 from attendance.forms import AttendanceForm, MonthlyReportForm
 from attendance.models import Attendance
+from attendance.utils import can_mark_attendance
 from employees.models import Employee, EmployeeProfile
 from leave.models import LeaveRequest
 from utils.filters import apply_common_filters
 from utils.pdf_generate import render_pdf_report
+from attendance.models import Attendance
 
 def _hr_or_admin(user):
     return user.is_superuser or user.groups.filter(name__in=["HR", "ADMIN"]).exists()
@@ -104,51 +106,70 @@ def admin_attendance_list(request):
 
 @login_required
 def mark_attendance(request, employee_id=None):
-    employees = None 
 
-    if request.user.is_staff:
-        if employee_id:
-            employee = get_object_or_404(Employee, id=employee_id)
-        else:
-            employee = None 
-            employees = Employee.objects.all()
+    is_employee_mode = "/me/" in request.path
+
+    profile = EmployeeProfile.objects.filter(user=request.user).first()
+
+    if not profile or not profile.employee:
+        return HttpResponseForbidden("Employee profile not linked.")
+
+    emp = profile.employee
+    message = None 
+
+    if is_employee_mode:
+        employee = emp
+        employees = None
     else:
-        profile = get_object_or_404(EmployeeProfile, user=request.user)
-        employee = profile.employee
+        if request.user.is_staff:
+            if employee_id:
+                employee = get_object_or_404(Employee, id=employee_id)
+            else:
+                employee = None
+            employees = Employee.objects.all()
+        else:
+            employee = emp
+            employees = None
 
-    message = None
+    form = AttendanceForm(request.POST or None)
 
     if request.method == "POST":
-        form = AttendanceForm(request.POST)
-
         if form.is_valid():
             attendance = form.save(commit=False)
 
-            if request.user.is_staff and not employee:
-                emp_id = request.POST.get("employee")
-                employee = get_object_or_404(Employee, id=emp_id)
+            if is_employee_mode:
+                attendance.employee = emp
+            else:
+                selected_employee_id = request.POST.get("employee")
+                attendance.employee = get_object_or_404(Employee, id=selected_employee_id)
 
-            attendance.employee = employee 
+           
+            allowed, data = can_mark_attendance(attendance.employee, attendance.date)
 
-            if Attendance.objects.filter(
-                employee=employee,
-                date=attendance.date
-            ).exists():
-
+            if not allowed:
                 message = {
-                    "type": "warning",
-                    "text": "Attendance already marked for this date."
+                    "type": "error",
+                    "text": f"Attendance already marked as {data}"
                 }
 
             else:
-                attendance.save()
+                if data:
+                    data.status = attendance.status
+                    data.check_in = attendance.check_in
+                    data.check_out = attendance.check_out
+                    data.save()
+                else:
+                    attendance.save()
 
                 message = {
                     "type": "success",
                     "text": "Attendance marked successfully!"
                 }
 
+                form = AttendanceForm()
+
         else:
+
             error_text = None
             for errors in form.errors.values():
                 for error in errors:
@@ -158,18 +179,16 @@ def mark_attendance(request, employee_id=None):
                     break
 
             message = {
-                "type": "error",
+                "type": "danger",
                 "text": error_text or "Invalid form data"
             }
 
-    else:
-        form = AttendanceForm()
-
     return render(request, "attendance/mark_attendance.html", {
         "form": form,
+        "employees": employees,
         "employee": employee,
-        "message": message,
-        "employees": employees 
+        "is_employee_mode": is_employee_mode,
+        "message": message 
     })
 
 @login_required
@@ -194,21 +213,36 @@ def my_attendance(request):
 @login_required
 def attendance_list(request):
 
-    if _hr_or_admin(request.user):
-        records = Attendance.objects.select_related("employee").all().order_by("date")
-        employees = Employee.objects.all()
-    else:
-        profile = EmployeeProfile.objects.filter(user=request.user).first()
+    # 🔥 Detect mode from URL
+    is_employee_mode = "/me/" in request.path
 
-        if not profile or not profile.employee:
-            return HttpResponseForbidden("Employee profile not linked.")
+    profile = EmployeeProfile.objects.filter(user=request.user).first()
 
+    if not profile or not profile.employee:
+        return HttpResponseForbidden("Employee profile not linked.")
+
+    emp = profile.employee
+
+    # 🔥 FIXED DATA SCOPE
+    if is_employee_mode:
+        # Employee mode → only own data
         records = Attendance.objects.select_related("employee").filter(
-            employee=profile.employee
+            employee=emp
         ).order_by("date")
+        employees = [emp]
 
-        employees = [profile.employee]
+    else:
+        # HR mode
+        if request.user.is_superuser or request.user.groups.filter(name__in=["HR", "ADMIN"]).exists():
+            records = Attendance.objects.select_related("employee").all().order_by("date")
+            employees = Employee.objects.all()
+        else:
+            records = Attendance.objects.select_related("employee").filter(
+                employee=emp
+            ).order_by("date")
+            employees = [emp]
 
+    # 🔁 Existing logic (unchanged)
     final_records = []
 
     if records.exists():
@@ -218,9 +252,9 @@ def attendance_list(request):
         current = start_date
 
         while current <= end_date:
-            for emp in employees:
+            for e in employees:
 
-                attendance = records.filter(employee=emp, date=current).first()
+                attendance = records.filter(employee=e, date=current).first()
 
                 if attendance:
                     final_records.append(SimpleNamespace(
@@ -233,15 +267,15 @@ def attendance_list(request):
                     ))
                 else:
                     leave = LeaveRequest.objects.filter(
-                    employee=emp,
-                    status="APPROVED",
-                    start_date__lte=current,
-                    end_date__gte=current
+                        employee=e,
+                        status="APPROVED",
+                        start_date__lte=current,
+                        end_date__gte=current
                     ).first()
 
                     if leave:
                         final_records.append(SimpleNamespace(
-                            employee=emp,
+                            employee=e,
                             date=current,
                             status="Leave",
                             check_in=None,
@@ -255,8 +289,10 @@ def attendance_list(request):
 
     return render(request, "attendance/attendance_list.html", {
         "attendance_records": final_records,
-        "page_obj": final_records, 
-        "viewer_role": "HR" if _hr_or_admin(request.user) else "EMP"
+        "page_obj": final_records,
+        "viewer_role": "HR" if (not is_employee_mode and (
+            request.user.is_superuser or request.user.groups.filter(name__in=["HR", "ADMIN"]).exists()
+        )) else "EMP"
     })
 
 def _get_monthly_attendance_stats(user, year=None, month=None, employee_id=None):
@@ -644,7 +680,29 @@ def attendance_download_csv(request):
 
     
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="attendance_report.csv"'
+
+    title = "Attendance Report"
+
+    file_title = title.replace(" ", "_")
+
+    if year:
+        if month:
+            month_name = calendar.month_name[int(month)]
+            file_title += f"_{month_name}_{year}"
+        else:
+            file_title += f"_{year}"
+
+    # Employee name (if selected)
+    employee_name = None
+    if employee_id:
+        emp_obj = Employee.objects.filter(id=employee_id).first()
+        if emp_obj:
+            employee_name = emp_obj.name
+            file_title += f"_{employee_name.replace(' ', '_')}"
+
+    filename = f"{file_title}.csv"
+
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     writer = csv.writer(response)
 

@@ -1,9 +1,13 @@
 import csv
+from datetime import timedelta
+from attendance.models import Attendance
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+from attendance.utils import can_mark_attendance
+from utils.file_name import generate_filename
 from utils.filters import apply_common_filters
 from utils.pdf_generate import render_pdf_report
 from .forms import LeaveReportFilterForm, LeaveRequestForm
@@ -220,9 +224,30 @@ def approve_leave(request, pk: int):
         return HttpResponseForbidden("Only HR/Admin can approve leave requests.")
 
     leave = LeaveRequest.objects.filter(id=pk).first()
+
     if leave:
         leave.status = "APPROVED"
         leave.save()
+
+        current = leave.start_date
+
+        while current <= leave.end_date:
+
+            allowed, data = can_mark_attendance(leave.employee, current)
+
+            if allowed:
+                if data:
+                    data.status = "Leave"
+                    data.save()
+                else:
+                    Attendance.objects.create(
+                        employee=leave.employee,
+                        date=current,
+                        status="Leave"
+                    )
+
+            current += timedelta(days=1)
+
     return redirect(request.GET.get('next', 'hr_all_leave_requests'))
 
 
@@ -450,7 +475,21 @@ def leave_report_download_csv(request):
     )
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="leave_report.csv"'
+    title = "Leave Report"
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    employee_id = request.GET.get("employee")
+
+    employee_name = None
+    if employee_id:
+        emp = Employee.objects.filter(id=employee_id).first()
+        if emp:
+            employee_name = emp.name
+
+    filename = generate_filename(title, year, month, employee_name, "csv")
+
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     writer = csv.writer(response)
     writer.writerow([

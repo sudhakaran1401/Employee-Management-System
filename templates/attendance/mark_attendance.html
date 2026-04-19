@@ -14,8 +14,8 @@
             <div class="col-md-6">
               <label class="form-label">Employee</label>
 
-              {% if employees %}
-                <!-- ✅ Dropdown case -->
+              {% if not employee %}
+                <!-- HR MODE -->
                 <select name="employee" class="form-control" required>
                   <option value="">-- Select Employee --</option>
                   {% for emp in employees %}
@@ -27,11 +27,12 @@
                 </select>
 
               {% else %}
+                <!-- EMPLOYEE MODE -->
                 <input type="text" class="form-control" value="{{ employee.name }}" readonly>
                 <input type="hidden" name="employee" value="{{ employee.id }}">
               {% endif %}
-
             </div>
+            
             <div class="col-md-6">
               <label class="form-label">Date</label>
               {{ form.date }}

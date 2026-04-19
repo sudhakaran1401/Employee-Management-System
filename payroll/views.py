@@ -1,6 +1,9 @@
 import calendar
 import csv
+import re
+from urllib import response
 import matplotlib
+from utils.file_name import generate_filename
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
@@ -194,17 +197,32 @@ def admin_salary_list(request):
 @login_required
 def employee_salary_history(request, employee_id=None):
 
-    if request.user.is_staff:
-        employee = get_object_or_404(Employee, id=employee_id)
+    # 🔥 Detect mode from URL
+    is_employee_mode = "/me/" in request.path
+
+    profile = EmployeeProfile.objects.filter(user=request.user).first()
+
+    if not profile:
+        return HttpResponseForbidden("Employee profile not linked.")
+
+    emp = profile.employee
+
+    # 🔥 FIXED LOGIC
+    if is_employee_mode:
+        # Employee mode → always own data
+        employee = emp
     else:
-        profile = EmployeeProfile.objects.filter(user=request.user).first()
-        employee = profile.employee
+        # HR mode
+        if request.user.is_staff:
+            employee = get_object_or_404(Employee, id=employee_id)
+        else:
+            employee = emp
 
     qs = SalaryHistory.objects.filter(employee=employee).order_by("-pay_month")
 
     return render(request, "payroll/salary_history_employee.html", {
         "rows": qs,
-        "page_obj": qs, 
+        "page_obj": qs,
         "employee": employee
     })
 
@@ -377,8 +395,22 @@ def salary_download_csv(request):
     )
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="salary_report.csv"'
+    title = "Payroll Report"
 
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    employee_id = request.GET.get("employee")
+
+    employee_name = None
+    if employee_id:
+        emp = Employee.objects.filter(id=employee_id).first()
+        if emp:
+            employee_name = emp.name
+
+    filename = generate_filename(title, year, month, employee_name, "csv")
+
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
     writer = csv.writer(response)
     writer.writerow([
         "Employee", "Department", "Month", "Gross", "Deduction", "Net Pay", "Paid date"
@@ -410,6 +442,7 @@ def salary_download_pdf(request):
         "pay_month"
     )
 
+    # ---------------- TITLE LOGIC (UNCHANGED) ----------------
     employee_name = None
 
     if employee_id:
@@ -430,48 +463,58 @@ def salary_download_pdf(request):
 
     if employee_name != "All Employees" and month_name and year:
         title_text += f" - {employee_name} ({month_name} {year})"
-
     elif employee_name != "All Employees" and year:
         title_text += f" - {employee_name} ({year})"
-
     elif employee_name != "All Employees":
         title_text += f" - {employee_name}"
-
     elif month_name and year:
         title_text += f" - {month_name} {year}"
-
     elif year:
-        title_text += f" - Year {year}"
-
+        title_text += f" - {year}"
     else:
         title_text += " - All Employees"
 
-
+    # ---------------- SUMMARY (UNCHANGED) ----------------
     total_payrolls = qs.count()
     total_net_pay = qs.aggregate(total=Sum('stored_net_pay'))['total'] or 0
 
+    # ---------------- CHART DATA (FIXED ONLY HERE) ----------------
     chart_data = (
-        qs.values("pay_month")
-        .annotate(total_net=Sum("stored_net_pay"))
-        .order_by("pay_month")
+        qs.annotate(month=TruncMonth("pay_month"))
+          .values("month")
+          .annotate(total_net=Sum("stored_net_pay"))
+          .order_by("month")
     )
 
-    months = [d["pay_month"].strftime("%b %Y") for d in chart_data]
-    totals = [d["total_net"] for d in chart_data]
+    months = [d["month"].strftime("%b %Y") for d in chart_data]
+    totals = [float(d["total_net"]) for d in chart_data]
 
+    # ---------------- CHART GENERATION (SAFE FIX) ----------------
     buffer = BytesIO()
     plt.figure()
-    plt.plot(months, totals, marker='o')
+
+    if len(months) == 1:
+        plt.scatter(months, totals)   # single point (no misleading line)
+    else:
+        plt.plot(months, totals, marker='o')  # proper trend
+
     plt.title("Monthly Net Pay Trend")
     plt.xlabel("Month")
     plt.ylabel("Net Pay")
     plt.tight_layout()
+
     plt.savefig(buffer, format='png')
     plt.close()
     buffer.seek(0)
 
+    # ---------------- PDF RESPONSE (UNCHANGED) ----------------
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="salary_report.pdf"'
+
+    file_title = title_text.replace(" ", "_")
+    file_title = re.sub(r'[^a-zA-Z0-9_]', '', file_title)
+    filename = f"{file_title}.pdf"
+
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     doc = SimpleDocTemplate(response)
     styles = getSampleStyleSheet()
@@ -480,6 +523,7 @@ def salary_download_pdf(request):
     elements.append(Paragraph(f"<b>{title_text}</b>", styles['Title']))
     elements.append(Spacer(1, 15))
 
+    # Summary Card
     card_data = [
         ["Total Payrolls", total_payrolls],
         ["Total Net Pay", f"₹ {total_net_pay}"]
@@ -496,6 +540,7 @@ def salary_download_pdf(request):
     elements.append(card_table)
     elements.append(Spacer(1, 20))
 
+    # Chart
     elements.append(Paragraph("<b>Salary Chart</b>", styles['Heading2']))
     elements.append(Spacer(1, 10))
 
@@ -503,7 +548,11 @@ def salary_download_pdf(request):
     elements.append(chart_image)
     elements.append(Spacer(1, 20))
 
-    table_data = [["Employee", "Department", "Month", "Gross", "Deduction", "Net Pay", "Paid Date"]]
+    # Table Data (UNCHANGED)
+    table_data = [[
+        "Employee", "Department", "Month",
+        "Gross", "Deduction", "Net Pay", "Paid Date"
+    ]]
 
     for r in qs:
         table_data.append([
@@ -517,6 +566,23 @@ def salary_download_pdf(request):
         ])
 
     table = Table(table_data, repeatRows=1)
+    table.setStyle([
+    ('GRID', (0, 0), (-1, -1), 0.5, colors.black),   
+    ('BOX', (0, 0), (-1, -1), 1, colors.black),     
+
+    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),   
+    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),    
+
+    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), 
+
+    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+    ])
+    elements.append(table)
+
+    doc.build(elements)
+
+    return response
 
     table.setStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),

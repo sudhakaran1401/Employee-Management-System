@@ -1,5 +1,6 @@
 import csv
 from datetime import date
+from urllib import response
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
@@ -7,6 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Sum, Q
 from django.urls import reverse
 from employees.forms import EmployeeForm, EmployeeReportFilterForm
+from utils.file_name import generate_filename
 from utils.pdf_generate import render_pdf_report
 from .decorators import is_admin, is_hr, is_employee
 from .models import Employee, EmployeeProfile
@@ -26,8 +28,8 @@ def login_view(request):
         if user is not None:
             login(request, user)
 
-            if user.is_superuser or user.is_staff:
-                return redirect('hr_dashboard')
+            if user.groups.filter(name="HR").exists():
+                return redirect('hr_dashboard') 
             else:
                 return redirect('employee_dashboard')
 
@@ -146,10 +148,8 @@ def hr_dashboard(request):
 
         elif year and month:
             employee_base = employee_base.filter(
-                joining_date__year__lt=int(year)
-            ) | employee_base.filter(
                 joining_date__year=int(year),
-                joining_date__month__lte=int(month)
+                joining_date__month=int(month)
             )
 
         elif year:
@@ -560,9 +560,9 @@ def employee_create(request):
 
 
 @login_required
-def employee_update(request, emp_id):
+def employee_update(request, employee_id):
 
-    employee = get_object_or_404(Employee, id=emp_id)
+    employee = get_object_or_404(Employee, id=employee_id)
     message = None
 
     if request.method == "POST":
@@ -585,6 +585,11 @@ def employee_update(request, emp_id):
                 }
 
             else:
+                
+                if request.POST.get('photo-clear'):
+                    employee.photo.delete(save=False)
+                    employee.photo = None
+                
                 form.save()
                 message = {
                     "type": "success",
@@ -706,7 +711,14 @@ def employee_download_csv(request):
         qs = qs.filter(joining_date__month=int(month))
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="employees_report.csv"'
+    title = "Employee Report"
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+
+    filename = generate_filename(title, year, month, None, "csv")
+
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     writer = csv.writer(response)
     writer.writerow(["Name", "Email", "Phone", "Department", "Designation", "Joining Date"])

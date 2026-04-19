@@ -5,7 +5,7 @@ class Attendance(models.Model):
 
     STATUS = [
         ("Present", "Present"),
-        ("Absent", "Absent"),
+        #("Absent", "Absent"),
         ("Leave", "Leave"),
         ("Holiday", "Holiday"),
     ]

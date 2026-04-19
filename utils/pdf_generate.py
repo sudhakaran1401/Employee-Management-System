@@ -1,3 +1,5 @@
+from urllib import response
+
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.graphics.shapes import Drawing
 from reportlab.graphics.charts.piecharts import Pie
@@ -8,7 +10,22 @@ import calendar
 
 
 def render_pdf_report(response, title, month, year, employee_name, summary_labels, summary_values, table_title, table_headers, table_rows,):
+    file_title = title.replace(" ", "_")
 
+    if year:
+        if month:
+            month_name = calendar.month_name[int(month)]
+            file_title += f"_{month_name}_{year}"
+        else:
+            file_title += f"_{year}"
+
+    if employee_name:
+        file_title += f"_{employee_name.replace(' ', '_')}"
+
+    filename = f"{file_title}.pdf"
+
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
     doc = SimpleDocTemplate(response)
     styles = getSampleStyleSheet()
     elements = []

@@ -2,19 +2,7 @@
 {% block content %}
 
 <h3>Attendance Calendar</h3>
-
-{% if is_hr %}
-<form method="get">
-    <select name="employee" id="employeeFilter">
-        <option value="">-- Select Employee --</option>
-        {% for emp in employees %}
-            <option value="{{ emp.id }}">{{ emp.name }}</option>
-        {% endfor %}
-    </select>
-</form>
-{% endif %}
 <br>
-
 <div id="calendar"></div>
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
